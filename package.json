@@ -16,7 +16,8 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.80.0",
     "react-hot-toast": "^2.6.0",
-    "react-router-dom": "^7.18.0"
+    "react-router-dom": "^7.18.0",
+     "rentbook": "file:./libs/rentbook-ui-lib-0.0.4.tgz"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

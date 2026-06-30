@@ -34,7 +34,8 @@ export const LOGIN_CONSTANTS = {
   PASSWORD_PLACEHOLDER: "Password",
   LOGIN_BUTTON: "Login",
  LOGIN_BUTTON_LOADING:"Logging in...",
-
+ DONT_HAVE_ACCOUNT: "Don't have an account?",
+  REGISTER: "Register",
   VALIDATION: {
     EMAIL_REQUIRED: "Email is required",
     EMAIL_INVALID: "Please enter a valid email address",

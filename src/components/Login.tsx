@@ -3,16 +3,20 @@ import { LoginFormData } from "../types/auth";
 import toast from "react-hot-toast";
 import { LOGIN_CONSTANTS } from "../constants";
 import { useLogin } from "../hook/useLogin";
+import 'rentbook/microfrontend.min.css'
+import { Button, Rb_Input, Rb_Label, Rb_Text } from "rentbook";
 
 interface LoginProps {
-  setIsLogin: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsLogin: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const Login = ({ setIsLogin }: LoginProps) => {
     const { mutateAsync, isPending } = useLogin();
+
     const {
         register,
         handleSubmit,
+        reset,
         formState: { errors },
     } = useForm<LoginFormData>();
 
@@ -24,13 +28,8 @@ const Login = ({ setIsLogin }: LoginProps) => {
 
             localStorage.setItem("token", token);
             localStorage.setItem("user", JSON.stringify(userInfo));
-
             toast.success("Login successful!");
 
-            console.log("Stored Token:", token);
-            console.log("Stored User:", userInfo);
-
-            // navigate("/home");
         } catch (error: any) {
             console.error(error);
 
@@ -44,25 +43,30 @@ const Login = ({ setIsLogin }: LoginProps) => {
     return (
         <div>
             <div className="mb-6">
-                <h2 className="text-3xl font-bold text-blue-600 mt-1">
+                <Rb_Text variant="h2">
                     {LOGIN_CONSTANTS.TITLE}
-                </h2>
+                </Rb_Text>
 
-                <p className="text-slate-500 mt-1">
+                <Rb_Text variant="p"
+                    className="text-slate-500 mt-1">
                     {LOGIN_CONSTANTS.SUBTITLE}
-                </p>
+                </Rb_Text>
             </div>
 
-            <form
-                onSubmit={handleSubmit(onSubmit)}
-                className="space-y-4"
-            >
-                {/* Email */}
+            <form onSubmit={handleSubmit(onSubmit)} >
+
                 <div>
-                    <input
+                    <Rb_Label htmlFor="email" required className="text-sm">
+                        Email Address
+                    </Rb_Label>
+
+                    <Rb_Input
+                        id="email"
                         type="email"
                         placeholder={LOGIN_CONSTANTS.EMAIL_PLACEHOLDER}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                        className="!mt-1 !mb-1 border !border-gray-300 rounded-lg"
+                        error={!!errors.email}
                         {...register("email", {
                             required: LOGIN_CONSTANTS.VALIDATION.EMAIL_REQUIRED,
                             pattern: {
@@ -74,41 +78,74 @@ const Login = ({ setIsLogin }: LoginProps) => {
                     />
 
                     {errors.email && (
-                        <p className="text-red-500 text-sm mt-1">
+                        <Rb_Text
+                            variant="p"
+                            className="text-red-500 text-sm"
+                        >
                             {errors.email.message}
-                        </p>
+                        </Rb_Text>
                     )}
                 </div>
 
-                {/* Password */}
                 <div>
-                    <input
+                    <Rb_Label htmlFor="password" required className="text-sm">
+                        Password
+                    </Rb_Label>
+
+                    <Rb_Input
+                        id="password"
                         type="password"
                         placeholder={LOGIN_CONSTANTS.PASSWORD_PLACEHOLDER}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="!mt-1 !mb-1 border !border-gray-300 rounded-lg"
+                        error={!!errors.password}
                         {...register("password", {
                             required: LOGIN_CONSTANTS.VALIDATION.PASSWORD_REQUIRED,
                         })}
                     />
 
                     {errors.password && (
-                        <p className="text-red-500 text-sm mt-1">
+                        <Rb_Text
+                            variant="p"
+                            className="text-red-500 text-sm"
+                        >
                             {errors.password.message}
-                        </p>
+                        </Rb_Text>
                     )}
                 </div>
-                {/* Button */}
+
                 <div className="flex justify-center">
-                    <button
+                    <Button
                         type="submit"
-                        disabled={isPending}
-                        className="bg-blue-600 text-white px-8 py-2 rounded-lg disabled:bg-gray-400"
+                        variant="primary"
+                        size="md"
+                        isLoading={isPending}
+                        className="w-full mt-4"
                     >
-                        {isPending ? LOGIN_CONSTANTS.LOGIN_BUTTON_LOADING : LOGIN_CONSTANTS.LOGIN_BUTTON}
-                    </button>
+                        {isPending
+                            ? LOGIN_CONSTANTS.LOGIN_BUTTON_LOADING
+                            : LOGIN_CONSTANTS.LOGIN_BUTTON}
+                    </Button>
                 </div>
-            </form >
-        </div >
+
+                <div className="text-center text-sm mt-3">
+                    <Rb_Text variant="span">
+                        {LOGIN_CONSTANTS.DONT_HAVE_ACCOUNT}{" "}
+                    </Rb_Text>
+
+                    <Rb_Text
+                        variant="span"
+                        className="text-blue-600 font-semibold cursor-pointer inline"
+                        onClick={() => {
+                            reset();
+                            setIsLogin(false);
+                        }}
+                    >
+                        {LOGIN_CONSTANTS.REGISTER}
+                    </Rb_Text>
+                </div>
+
+            </form>
+        </div>
     );
 };
 
