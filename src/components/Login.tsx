@@ -10,6 +10,10 @@ import { useEffect } from "react";
 interface LoginProps {
     isLogin: boolean;
     setIsLogin: React.Dispatch<React.SetStateAction<boolean>>;
+    options: {
+        containerElementId: string;
+        name?: string;
+    };
 }
 
 const Login = ({ isLogin, setIsLogin }: LoginProps) => {
@@ -35,6 +39,14 @@ const Login = ({ isLogin, setIsLogin }: LoginProps) => {
 
             localStorage.setItem("token", token);
             localStorage.setItem("user", JSON.stringify(userInfo));
+            window.dispatchEvent(
+                new CustomEvent("login-widget-success", {
+                    detail: {
+                        token,
+                        userInfo,
+                    },
+                })
+            );
             toast.success("Login successful!");
         } catch (error: unknown) {
             console.error(error);

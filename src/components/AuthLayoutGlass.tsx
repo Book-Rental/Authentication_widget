@@ -6,8 +6,14 @@ import { Rb_Text } from "rentbook-ui-lib";
 import { AUTH_LAYOUT_TEXT } from "../constants";
 import { FiBookOpen } from "react-icons/fi";
 
+interface AuthLayoutGlassProps {
+  options: {
+    containerElementId: string;
+    name?: string;
+  };
+}
 
-const AuthLayoutGlass = () => {
+const AuthLayoutGlass = ({ options }: AuthLayoutGlassProps) => {
   const [isLogin, setIsLogin] = useState(true);
 
   return (
@@ -122,10 +128,7 @@ const AuthLayoutGlass = () => {
               : "opacity-0 invisible pointer-events-none"
               }`}
           >
-            <Login
-              isLogin={isLogin}
-              setIsLogin={setIsLogin}
-            />
+            <Login isLogin={isLogin} setIsLogin={setIsLogin} options={options} />
           </div>
 
           <div
