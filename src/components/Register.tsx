@@ -33,8 +33,11 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
         onSuccess: (response) => {
             toast.success(response.message);
             reset();
-        },
-
+       
+      setTimeout(() => {
+            setIsLogin(true);
+        }, 1500); 
+ },
         onError: (error: Error) => {
             toast.error(error.message || REGISTER_TEXT.GENERIC_ERROR);
         },
