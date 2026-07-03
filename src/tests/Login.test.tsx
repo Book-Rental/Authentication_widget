@@ -165,6 +165,7 @@ describe("Login Component", () => {
                 },
             },
             message: "Login successful!",
+             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         } as any);
 
         const setItemSpy = vi.spyOn(Storage.prototype, "setItem");

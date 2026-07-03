@@ -221,6 +221,7 @@ describe("Register Component", () => {
     it("registers successfully", async () => {
         vi.mocked(authService.registerUser).mockResolvedValue({
             message: "Registration successful!",
+         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         } as any);
 
         renderRegister();
