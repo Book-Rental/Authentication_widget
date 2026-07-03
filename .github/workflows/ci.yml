@@ -1,10 +1,11 @@
-name: Widget CI
+name: Widget CI/CD
 
 on:
   push:
     branches:
       - main
       - auth-ui-v2
+      - ci-cd
 
   pull_request:
     branches:
@@ -13,16 +14,21 @@ on:
 
 jobs:
   build:
+    name: Build Authentication Widget
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [20.x]
+
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: npm
 
       - name: Install Dependencies
@@ -31,5 +37,14 @@ jobs:
       - name: Run Lint
         run: npm run lint
 
+      - name: Run Tests with Coverage
+        run: npm run coverage
+
+
       - name: Build Project
         run: npm run build
+
+      - name: Trigger Render Deployment
+        if: github.event_name == 'push' && success()
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
