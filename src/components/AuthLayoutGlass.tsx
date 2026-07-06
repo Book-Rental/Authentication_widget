@@ -2,10 +2,11 @@ import { useState } from "react";
 import Login from "./Login";
 import Register from "./Register";
 import background from "../assets/glassybackground.png";
-import { Rb_Text } from "rentbook-ui-lib";
+import { Rb_Icon, Rb_Text } from "rentbook-ui-lib";
 import { AUTH_LAYOUT_TEXT } from "../constants";
-import { FiBookOpen } from "react-icons/fi";
+
 import "./AuthLayoutGlass.css";
+import { FiBookOpen } from "react-icons/fi";
 interface AuthLayoutGlassProps {
   options: {
     containerElementId: string;
@@ -27,7 +28,7 @@ const AuthLayoutGlass = ({ options }: AuthLayoutGlassProps) => {
       <div className="auth-card relative z-10 w-full max-w-[420px] sm:max-w-md rounded-2xl border border-white/30 bg-white/70 backdrop-blur-xl shadow-xl p-4 sm:p-5 opacity-80 flex flex-col">
         <div className="flex flex-col items-center mb-2 shrink-0">
           <div className="flex items-center gap-1.5">
-            <FiBookOpen />
+            <Rb_Icon icon={FiBookOpen} size={20} color="#3b82f6" />
             <Rb_Text
               variant="h1"
               className="text-lg sm:text-xl font-extrabold text-slate-900"

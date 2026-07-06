@@ -3,9 +3,11 @@ import { LoginFormData } from "../types/auth";
 import toast from "react-hot-toast";
 import { LOGIN_CONSTANTS } from "../constants";
 import { useLogin } from "../hook/useLogin";
-import { Rb_Input, Rb_Text, Rb_Label, Button } from "rentbook-ui-lib";
+import { Rb_Input, Rb_Text, Rb_Label, Button, Rb_Icon } from "rentbook-ui-lib";
 import { AxiosError } from "axios";
 import { useEffect } from "react";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useState } from "react";
 
 interface LoginProps {
     isLogin: boolean;
@@ -18,7 +20,7 @@ interface LoginProps {
 
 const Login = ({ isLogin, setIsLogin }: LoginProps) => {
     const { mutateAsync, isPending } = useLogin();
-
+    const [showPassword, setShowPassword] = useState(false);
     const {
         register,
         handleSubmit,
@@ -92,29 +94,38 @@ const Login = ({ isLogin, setIsLogin }: LoginProps) => {
                         {errors.email?.message || ""}
                     </Rb_Text>
                 </div>
-
                 <div>
-                    <Rb_Label htmlFor="password" required className="text-sm">
-                        Password
-                    </Rb_Label>
+                    <div className="relative">
+                        <Rb_Label htmlFor="password" required className="text-sm">
+                            Password
+                        </Rb_Label>
 
-                    <Rb_Input
-                        id="password"
-                        type="password"
-                        placeholder={LOGIN_CONSTANTS.PASSWORD_PLACEHOLDER}
-                        className="!mt-1 !mb-0 rounded-lg"
-                        borderClass='border !border-gray-500'
-                        error={!!errors.password}
-                        {...register("password", {
-                            required: LOGIN_CONSTANTS.VALIDATION.PASSWORD_REQUIRED,
-                        })}
-                    />
-
-                    <Rb_Text variant="p" className="text-red-500 text-xs leading-tight h-4 mt-0.5">
-                        {errors.password?.message || ""}
-                    </Rb_Text>
+                        <Rb_Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder={LOGIN_CONSTANTS.PASSWORD_PLACEHOLDER}
+                            className="!mt-1 !mb-0 rounded-lg pr-10"
+                            borderClass='border !border-gray-500'
+                            error={!!errors.password}
+                            {...register("password", {
+                                required: LOGIN_CONSTANTS.VALIDATION.PASSWORD_REQUIRED,
+                            })}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-[55%] -translate-y-1/2 text-gray-500"
+                        >
+                            <Rb_Icon
+                                icon={showPassword ? FaEyeSlash : FaEye}
+                                size={15} color="#3b82f6"
+                            />
+                        </button>
+                        <Rb_Text variant="p" className="text-red-500 text-xs leading-tight h-4 mt-0.5">
+                            {errors.password?.message || ""}
+                        </Rb_Text>
+                    </div>
                 </div>
-
                 <div className="flex justify-center">
                     <Button
                         type="submit"
