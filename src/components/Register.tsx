@@ -5,7 +5,9 @@ import { useMutation } from "@tanstack/react-query";
 import { registerUser } from "../services/authService";
 import { RegisterFormData, RegisterPayload } from "../types/auth";
 import { VALIDATION_MESSAGES, PLACEHOLDERS, REGISTER_TEXT } from "../constants";
-import { Button, Rb_Input, Rb_Label, Rb_Text } from "rentbook-ui-lib";
+import { Button, Rb_Icon, Rb_Input, Rb_Label, Rb_Text } from "rentbook-ui-lib";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useState } from "react";
 
 interface RegisterProps {
     isLogin: boolean;
@@ -20,7 +22,8 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
         reset,
         formState: { errors },
     } = useForm<RegisterFormData>();
-
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     useEffect(() => {
         if (isLogin) {
             reset();
@@ -75,6 +78,10 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                             error={!!errors.firstName}
                             {...register("firstName", {
                                 required: VALIDATION_MESSAGES.FIRST_NAME_REQUIRED,
+                                pattern: {
+                                    value: /^[A-Za-z]+$/,
+                                    message: VALIDATION_MESSAGES.FIRST_NAME_INVALID,
+                                },
                             })}
                             className="rounded-lg !mt-1 !mb-0"
                             borderClass='border !border-gray-500'
@@ -95,6 +102,10 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                             error={!!errors.lastName}
                             {...register("lastName", {
                                 required: VALIDATION_MESSAGES.LAST_NAME_REQUIRED,
+                                pattern: {
+                                    value: /^[A-Za-z]+$/,
+                                    message: VALIDATION_MESSAGES.LAST_NAME_INVALID,
+                                },
                             })}
                             className="rounded-lg !mt-1 !mb-0"
                             borderClass='border !border-gray-500'
@@ -129,13 +140,13 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                     </Rb_Text>
                 </div>
 
-                <div>
+                <div className="relative">
                     <Rb_Label htmlFor="password" required className="text-sm">
                         Password
                     </Rb_Label>
                     <Rb_Input
                         id="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder={PLACEHOLDERS.PASSWORD}
                         error={!!errors.password}
                         {...register("password", {
@@ -148,18 +159,28 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                         className="rounded-lg !mt-1 !mb-0"
                         borderClass='border !border-gray-500'
                     />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-[55%] -translate-y-1/2 text-gray-500"
+                    >
+                        <Rb_Icon
+                            icon={showPassword ? FaEyeSlash : FaEye}
+                            size={15} color="#3b82f6"
+                        />
+                    </button>
                     <Rb_Text variant="p" className="text-red-500 text-xs leading-tight h-4 mt-0.5">
                         {errors.password?.message || ""}
                     </Rb_Text>
                 </div>
 
-                <div>
+                <div className="relative">
                     <Rb_Label htmlFor="confirmPassword" required className="text-sm">
                         Confirm Password
                     </Rb_Label>
                     <Rb_Input
                         id="confirmPassword"
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         placeholder={PLACEHOLDERS.CONFIRM_PASSWORD}
                         error={!!errors.confirmPassword}
                         {...register("confirmPassword", {
@@ -171,6 +192,16 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                         className="rounded-lg !mt-1 !mb-0"
                         borderClass='border !border-gray-500'
                     />
+                    <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-[55%] -translate-y-1/2 text-gray-500"
+                    >
+                        <Rb_Icon
+                            icon={showPassword ? FaEyeSlash : FaEye}
+                            size={15} color="#3b82f6"
+                        />
+                    </button>
                     <Rb_Text variant="p" className="text-red-500 text-xs leading-tight h-4 mt-0.5">
                         {errors.confirmPassword?.message || ""}
                     </Rb_Text>
