@@ -38,6 +38,9 @@ const Login = ({ isLogin, setIsLogin }: LoginProps) => {
         try {
             const response = await mutateAsync(data);
             const { token, userInfo } = response.data;
+
+         
+            localStorage.setItem("user", JSON.stringify(userInfo));
             window.dispatchEvent(
                 new CustomEvent("login-widget-success", {
                     detail: {
