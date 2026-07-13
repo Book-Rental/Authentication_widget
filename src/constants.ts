@@ -7,6 +7,8 @@ export const VALIDATION_MESSAGES = {
   PASSWORD_MIN_LENGTH: "Password must be at least 6 characters",
   CONFIRM_PASSWORD_REQUIRED: "Confirm Password is required",
   PASSWORDS_DO_NOT_MATCH: "Passwords do not match",
+  FIRST_NAME_INVALID: "Only alphabets are allowed.",
+  LAST_NAME_INVALID: "Only alphabets are allowed.",
 };
 
 export const PLACEHOLDERS = {
