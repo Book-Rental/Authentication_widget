@@ -7,8 +7,7 @@ import { useEffect } from "react";
 import { showToast } from "../utils/showToast";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useState } from "react";
-import { Rb_Text, Rb_Label, Rb_Input, Rb_Icon, Rb_Button } from "@rentbook/rentbook-ui-lib";
-
+import { Rb_Button, Rb_Icon, Rb_Input, Rb_Label, Rb_Text } from "@rentbook/rentbook-ui-lib";
 
 interface LoginProps {
     isLogin: boolean;
