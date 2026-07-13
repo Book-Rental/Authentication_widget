@@ -1,16 +1,8 @@
 import { renderWithProviders } from "./test-utils";
-import { screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import Login from "../components/Login";
-import toast from "react-hot-toast";
 import * as authService from "../services/authService";
-
-vi.mock("react-hot-toast", () => ({
-    default: {
-        success: vi.fn(),
-        error: vi.fn(),
-    },
-}));
 
 vi.mock("../services/authService", async () => {
     const actual = await vi.importActual("../services/authService");
@@ -18,6 +10,10 @@ vi.mock("../services/authService", async () => {
         ...actual,
         loginUser: vi.fn(),
     };
+});
+
+afterEach(() => {
+    vi.restoreAllMocks();
 });
 
 const renderLogin = (setIsLogin = vi.fn()) => {
@@ -155,6 +151,7 @@ describe("Login Component", () => {
             screen.getByRole("button", { name: "Login" })
         ).toBeEnabled();
     });
+
     it("logs in successfully", async () => {
         vi.mocked(authService.loginUser).mockResolvedValue({
             data: {
@@ -165,10 +162,11 @@ describe("Login Component", () => {
                 },
             },
             message: "Login successful!",
-             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
 
         const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
 
         renderLogin();
 
@@ -182,12 +180,69 @@ describe("Login Component", () => {
 
         fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
-        await screen.findByRole("button", { name: /login/i });
-
-        expect(authService.loginUser).toHaveBeenCalled();
+        await waitFor(() => {
+            expect(authService.loginUser).toHaveBeenCalled();
+        });
 
         expect(setItemSpy).toHaveBeenCalled();
 
-        expect(toast.success).toHaveBeenCalled();
+        await waitFor(() => {
+            expect(dispatchEventSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: "app-toast-notification",
+                    detail: {
+                        message: "Login successful!",
+                        type: "success",
+                    },
+                })
+            );
+        });
     });
+    it("shows error toast when login fails", async () => {
+        vi.mocked(authService.loginUser).mockRejectedValue({
+            response: {
+                data: {
+                    message: "Invalid credentials",
+                },
+            },
+        });
+
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+
+        renderLogin();
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "test@test.com" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Password"), {
+            target: { value: "123456" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: /login/i }));
+
+        await waitFor(() => {
+            expect(dispatchEventSpy).toHaveBeenCalled();
+        });
+    });
+
+    it("toggles password visibility", () => {
+    renderLogin();
+
+    const passwordInput = screen.getByPlaceholderText(
+        "Password"
+    ) as HTMLInputElement;
+
+    expect(passwordInput.type).toBe("password");
+
+    // Find the toggle button near the password input
+    const toggleButton =
+        passwordInput.parentElement?.querySelector("button");
+
+    expect(toggleButton).toBeInTheDocument();
+
+    fireEvent.click(toggleButton!);
+
+    expect(passwordInput.type).toBe("text");
+});
 });

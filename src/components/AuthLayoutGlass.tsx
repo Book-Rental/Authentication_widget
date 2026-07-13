@@ -2,11 +2,10 @@ import { useState } from "react";
 import Login from "./Login";
 import Register from "./Register";
 import background from "../assets/glassybackground.png";
-import { Rb_Icon, Rb_Text } from "rentbook-ui-lib";
 import { AUTH_LAYOUT_TEXT } from "../constants";
-
 import "./AuthLayoutGlass.css";
 import { FiBookOpen } from "react-icons/fi";
+import { Rb_Icon, Rb_Text } from "@rentbook/rentbook-ui-lib";
 interface AuthLayoutGlassProps {
   options: {
     containerElementId: string;

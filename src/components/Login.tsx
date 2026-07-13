@@ -1,13 +1,13 @@
 import { useForm } from "react-hook-form";
 import { LoginFormData } from "../types/auth";
-import toast from "react-hot-toast";
 import { LOGIN_CONSTANTS } from "../constants";
 import { useLogin } from "../hook/useLogin";
-import { Rb_Input, Rb_Text, Rb_Label, Button, Rb_Icon } from "rentbook-ui-lib";
 import { AxiosError } from "axios";
 import { useEffect } from "react";
+import { showToast } from "../utils/showToast";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useState } from "react";
+import { Rb_Button, Rb_Icon, Rb_Input, Rb_Label, Rb_Text } from "@rentbook/rentbook-ui-lib";
 
 interface LoginProps {
     isLogin: boolean;
@@ -49,13 +49,14 @@ const Login = ({ isLogin, setIsLogin }: LoginProps) => {
                     },
                 })
             );
-            toast.success("Login successful!");
+            showToast("Login successful!", "success");
         } catch (error: unknown) {
             console.error(error);
             const axiosError = error as AxiosError<{ message: string }>;
-            toast.error(
-                axiosError.response?.data?.message ||
-                LOGIN_CONSTANTS.VALIDATION.INVALID_CREDENTIALS
+            showToast(
+                axiosError.response?.data?.message ??
+                LOGIN_CONSTANTS.VALIDATION.INVALID_CREDENTIALS,
+                "error"
             );
         }
     };
@@ -127,7 +128,7 @@ const Login = ({ isLogin, setIsLogin }: LoginProps) => {
                     </div>
                 </div>
                 <div className="flex justify-center">
-                    <Button
+                    <Rb_Button
                         type="submit"
                         variant="primary"
                         size="md"
@@ -137,7 +138,7 @@ const Login = ({ isLogin, setIsLogin }: LoginProps) => {
                         {isPending
                             ? LOGIN_CONSTANTS.LOGIN_BUTTON_LOADING
                             : LOGIN_CONSTANTS.LOGIN_BUTTON}
-                    </Button>
+                    </Rb_Button>
                 </div>
 
                 <div className="text-center text-sm mt-2">

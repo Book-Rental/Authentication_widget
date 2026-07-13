@@ -33,7 +33,7 @@ export const loginUser = async (payload: LoginFormData) => {
     `${BASE_URL}/auth/login`,
     payload,
     {
-      withCredentials: true 
+      withCredentials: true
     }
   );
 
