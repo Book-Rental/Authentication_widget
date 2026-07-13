@@ -2,15 +2,14 @@ import { renderWithProviders } from "./test-utils";
 import { screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import Register from "../components/Register";
-import toast from "react-hot-toast";
 import * as authService from "../services/authService";
 import { waitFor } from "@testing-library/react";
-vi.mock("react-hot-toast", () => ({
-    default: {
-        success: vi.fn(),
-        error: vi.fn(),
-    },
-}));
+import { afterEach } from "vitest";
+import { act } from "@testing-library/react";
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
 
 vi.mock("../services/authService", async () => {
     const actual = await vi.importActual("../services/authService");
@@ -221,8 +220,10 @@ describe("Register Component", () => {
     it("registers successfully", async () => {
         vi.mocked(authService.registerUser).mockResolvedValue({
             message: "Registration successful!",
-         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
+
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
 
         renderRegister();
 
@@ -255,9 +256,124 @@ describe("Register Component", () => {
         });
 
         await waitFor(() => {
-            expect(toast.success).toHaveBeenCalledWith(
-                "Registration successful!"
-            );
+            expect(dispatchEventSpy).toHaveBeenCalled();
         });
+
+        const event = dispatchEventSpy.mock.calls.find(
+            ([event]) => event.type === "app-toast-notification"
+        )?.[0] as CustomEvent;
+
+        expect(event.detail).toEqual({
+            message: "Registration successful!",
+            type: "success",
+        });
+    });
+
+    it("shows error toast when registration fails", async () => {
+        vi.mocked(authService.registerUser).mockRejectedValue(
+            new Error("Email already exists")
+        );
+
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("First Name"), {
+            target: { value: "Sowmya" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Last Name"), {
+            target: { value: "Chilpa" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "sowmya@test.com" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Password"), {
+            target: { value: "123456" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Confirm Password"), {
+            target: { value: "123456" },
+        });
+
+        fireEvent.click(
+            screen.getByRole("button", { name: /create account/i })
+        );
+
+        await waitFor(() => {
+            expect(dispatchEventSpy).toHaveBeenCalled();
+        });
+    });
+
+    it("resets form when isLogin is true", () => {
+        renderWithProviders(
+            <Register
+                isLogin={true}
+                setIsLogin={vi.fn()}
+            />
+        );
+
+        expect(
+            screen.getByRole("heading", { name: "Create Account" })
+        ).toBeInTheDocument();
+    });
+
+
+    it("switches to login after successful registration", async () => {
+        vi.useFakeTimers();
+
+        vi.mocked(authService.registerUser).mockResolvedValue({
+            message: "Registration successful!",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+
+        const setIsLogin = vi.fn();
+
+        renderWithProviders(
+            <Register
+                isLogin={false}
+                setIsLogin={setIsLogin}
+            />
+        );
+
+        fireEvent.change(screen.getByPlaceholderText("First Name"), {
+            target: { value: "Sowmya" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Last Name"), {
+            target: { value: "Chilpa" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "sowmya@test.com" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Password"), {
+            target: { value: "123456" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Confirm Password"), {
+            target: { value: "123456" },
+        });
+
+        await act(async () => {
+            fireEvent.click(
+                screen.getByRole("button", { name: /create account/i })
+            );
+
+            // Flush pending promises from React Query
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        await act(async () => {
+            vi.advanceTimersByTime(1500);
+        });
+
+        expect(setIsLogin).toHaveBeenCalledWith(true);
+
+        vi.useRealTimers();
     });
 });

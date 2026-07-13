@@ -1,11 +1,11 @@
 import { useForm } from "react-hook-form";
 import { LoginFormData } from "../types/auth";
-import toast from "react-hot-toast";
 import { LOGIN_CONSTANTS } from "../constants";
 import { useLogin } from "../hook/useLogin";
 import { Rb_Input, Rb_Text, Rb_Label, Button } from "rentbook-ui-lib";
 import { AxiosError } from "axios";
 import { useEffect } from "react";
+import { showToast } from "../utils/showToast";
 
 interface LoginProps {
     isLogin: boolean;
@@ -47,13 +47,14 @@ const Login = ({ isLogin, setIsLogin }: LoginProps) => {
                     },
                 })
             );
-            toast.success("Login successful!");
+            showToast("Login successful!", "success");
         } catch (error: unknown) {
             console.error(error);
             const axiosError = error as AxiosError<{ message: string }>;
-            toast.error(
-                axiosError.response?.data?.message ||
-                LOGIN_CONSTANTS.VALIDATION.INVALID_CREDENTIALS
+            showToast(
+                axiosError.response?.data?.message ??
+                LOGIN_CONSTANTS.VALIDATION.INVALID_CREDENTIALS,
+                "error"
             );
         }
     };

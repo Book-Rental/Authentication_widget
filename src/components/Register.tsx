@@ -1,4 +1,3 @@
-import toast from "react-hot-toast";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
@@ -6,6 +5,7 @@ import { registerUser } from "../services/authService";
 import { RegisterFormData, RegisterPayload } from "../types/auth";
 import { VALIDATION_MESSAGES, PLACEHOLDERS, REGISTER_TEXT } from "../constants";
 import { Button, Rb_Input, Rb_Label, Rb_Text } from "rentbook-ui-lib";
+import { showToast } from "../utils/showToast";
 
 interface RegisterProps {
     isLogin: boolean;
@@ -31,7 +31,7 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
         mutationFn: registerUser,
 
         onSuccess: (response) => {
-            toast.success(response.message);
+           showToast(response.message, "success");
             reset();
 
             setTimeout(() => {
@@ -39,7 +39,7 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
             }, 1500);
         },
         onError: (error: Error) => {
-            toast.error(error.message || REGISTER_TEXT.GENERIC_ERROR);
+           showToast(error.message || REGISTER_TEXT.GENERIC_ERROR, "error");
         },
     });
 
