@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@rentbook/rentbook-ui-lib": "^0.0.2",
     "@tanstack/react-query": "^5.101.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -21,8 +22,7 @@
     "react-hook-form": "^7.80.0",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.7.0",
-    "react-router-dom": "^7.18.0",
-    "rentbook-ui-lib": "file:lib/rentbook-ui-lib-0.0.1.tgz"
+    "react-router-dom": "^7.18.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

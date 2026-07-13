@@ -1,5 +1,5 @@
 import { createRoot, Root as ReactRoot } from "react-dom/client";
-import "rentbook-ui-lib/microfrontend.min.css";
+import "@rentbook/rentbook-ui-lib/microfrontend.min.css"
 import "./index.css";
 import App from "./App";
 export interface WidgetOptions {

@@ -225,4 +225,24 @@ describe("Login Component", () => {
             expect(dispatchEventSpy).toHaveBeenCalled();
         });
     });
+
+    it("toggles password visibility", () => {
+    renderLogin();
+
+    const passwordInput = screen.getByPlaceholderText(
+        "Password"
+    ) as HTMLInputElement;
+
+    expect(passwordInput.type).toBe("password");
+
+    // Find the toggle button near the password input
+    const toggleButton =
+        passwordInput.parentElement?.querySelector("button");
+
+    expect(toggleButton).toBeInTheDocument();
+
+    fireEvent.click(toggleButton!);
+
+    expect(passwordInput.type).toBe("text");
+});
 });

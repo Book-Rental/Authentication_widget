@@ -217,6 +217,7 @@ describe("Register Component", () => {
 
         expect(screen.getByText("Login")).toBeInTheDocument();
     });
+
     it("registers successfully", async () => {
         vi.mocked(authService.registerUser).mockResolvedValue({
             message: "Registration successful!",
@@ -375,5 +376,114 @@ describe("Register Component", () => {
         expect(setIsLogin).toHaveBeenCalledWith(true);
 
         vi.useRealTimers();
+    });
+
+    it("shows invalid first name validation", async () => {
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("First Name"), {
+            target: { value: "John123" },
+        });
+
+        fireEvent.click(
+            screen.getByRole("button", { name: /create account/i })
+        );
+
+        expect(
+            await screen.findByText("Only alphabets are allowed.")
+        ).toBeInTheDocument();
+    });
+
+    it("shows invalid last name validation", async () => {
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("First Name"), {
+            target: { value: "John" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Last Name"), {
+            target: { value: "Doe123" },
+        });
+
+        fireEvent.click(
+            screen.getByRole("button", { name: /create account/i })
+        );
+
+        expect(
+            await screen.findByText("Only alphabets are allowed.")
+        ).toBeInTheDocument();
+    });
+
+    it("shows password mismatch validation", async () => {
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("First Name"), {
+            target: { value: "Sowmya" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Last Name"), {
+            target: { value: "Chilpa" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "sowmya@test.com" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Password"), {
+            target: { value: "123456" },
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("Confirm Password"), {
+            target: { value: "654321" },
+        });
+
+        fireEvent.click(
+            screen.getByRole("button", {
+                name: /create account/i,
+            })
+        );
+
+        expect(
+            await screen.findByText("Passwords do not match")
+        ).toBeInTheDocument();
+    });
+
+    it("toggles password visibility", () => {
+        renderRegister();
+
+        const password = screen.getByPlaceholderText(
+            "Password"
+        ) as HTMLInputElement;
+
+        expect(password.type).toBe("password");
+
+        const buttons = screen.getAllByRole("button");
+
+        fireEvent.click(buttons[0]);
+
+        expect(password.type).toBe("text");
+    });
+
+    it("toggles confirm password visibility", () => {
+        renderRegister();
+
+        const confirmPassword = screen.getByPlaceholderText(
+            "Confirm Password"
+        ) as HTMLInputElement;
+
+        expect(confirmPassword.type).toBe("password");
+
+        // 👇 Add these lines here
+        const buttons = screen.getAllByRole("button");
+
+        console.log(buttons.length);
+
+        buttons.forEach((button, index) => {
+            console.log(index, button.outerHTML);
+        });
+
+        fireEvent.click(buttons[1]);
+
+        expect(confirmPassword.type).toBe("text");
     });
 });

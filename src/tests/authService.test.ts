@@ -114,7 +114,10 @@ describe("authService", () => {
 
             expect(axios.post).toHaveBeenCalledWith(
                 "https://be-book-rental.onrender.com/api/auth/login",
-                payload
+                payload,
+                {
+                    withCredentials: true,
+                }
             );
         });
 
