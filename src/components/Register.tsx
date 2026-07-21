@@ -34,6 +34,11 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
     useEffect(() => {
         if (isLogin) {
             reset();
+            setIsEmailVerified(false);
+        setShowOtpModal(false);
+        setOtp("");
+        setIsSendingOtp(false);
+        setIsVerifyingOtp(false);
         }
     }, [isLogin, reset]);
 
@@ -43,10 +48,12 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
         onSuccess: (response) => {
             showToast(response.message, "success");
             reset();
-
+ setIsEmailVerified(false);
+    setShowOtpModal(false);
+    setOtp("");
             setTimeout(() => {
                 setIsLogin(true);
-            }, 1500);
+            }, 5000);
         },
         onError: (error: Error) => {
             showToast(error.message || REGISTER_TEXT.GENERIC_ERROR, "error");
