@@ -1,13 +1,14 @@
 import { renderWithProviders } from "./test-utils";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import Register from "../components/Register";
 import * as authService from "../services/authService";
-import { waitFor } from "@testing-library/react";
 import { afterEach } from "vitest";
 import { act } from "@testing-library/react";
 
 afterEach(() => {
+      vi.useRealTimers();
+    vi.clearAllMocks();          
     vi.restoreAllMocks();
 });
 
@@ -17,6 +18,8 @@ vi.mock("../services/authService", async () => {
     return {
         ...actual,
         registerUser: vi.fn(),
+        sendOtp: vi.fn(),
+        verifyOtp: vi.fn(),
     };
 });
 
@@ -29,6 +32,57 @@ const renderRegister = (setIsLogin = vi.fn()) => {
     );
 };
 
+/**
+ * Drives the full email-verification flow so tests that need
+ * `isEmailVerified === true` before submitting can reuse this.
+ * Assumes First/Last Name and Email have already been filled in.
+ */
+const completeEmailVerification = async (email: string) => {
+    vi.mocked(authService.sendOtp).mockResolvedValue({
+        message: "OTP sent",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    vi.mocked(authService.verifyOtp).mockResolvedValue({
+        message: "OTP verified",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    fireEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+    await waitFor(() => {
+        expect(authService.sendOtp).toHaveBeenCalled();
+    });
+
+    const otpInput = await screen.findByPlaceholderText("Enter OTP");
+
+    fireEvent.change(otpInput, { target: { value: "123456" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /verify otp/i }));
+
+    await waitFor(() => {
+        expect(authService.verifyOtp).toHaveBeenCalledWith({
+            email,
+            otp: "123456",
+        });
+    });
+
+    // Modal should close once verification succeeds
+    await waitFor(() => {
+        expect(screen.queryByPlaceholderText("Enter OTP")).not.toBeInTheDocument();
+    });
+};
+
+/** Returns the most recently dispatched toast CustomEvent, if any. */
+const getLatestToastEvent = (
+    calls: unknown[][]
+): CustomEvent | undefined => {
+    const toastEvents = calls
+        .map((call) => call[0] as CustomEvent)
+        .filter((event) => event.type === "app-toast-notification");
+
+    return toastEvents[toastEvents.length - 1];
+};
 describe("Register Component", () => {
     it("renders register title", () => {
         renderRegister();
@@ -219,6 +273,8 @@ describe("Register Component", () => {
     });
 
     it("registers successfully", async () => {
+        const email = "sowmya@test.com";
+
         vi.mocked(authService.registerUser).mockResolvedValue({
             message: "Registration successful!",
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -237,8 +293,10 @@ describe("Register Component", () => {
         });
 
         fireEvent.change(screen.getByPlaceholderText("Email Address"), {
-            target: { value: "sowmya@test.com" },
+            target: { value: email },
         });
+
+        await completeEmailVerification(email);
 
         fireEvent.change(screen.getByPlaceholderText("Password"), {
             target: { value: "123456" },
@@ -256,21 +314,18 @@ describe("Register Component", () => {
             expect(authService.registerUser).toHaveBeenCalled();
         });
 
-        await waitFor(() => {
-            expect(dispatchEventSpy).toHaveBeenCalled();
-        });
-
-        const event = dispatchEventSpy.mock.calls.find(
-            ([event]) => event.type === "app-toast-notification"
-        )?.[0] as CustomEvent;
-
-        expect(event.detail).toEqual({
-            message: "Registration successful!",
-            type: "success",
-        });
+     await waitFor(() => {
+    const event = getLatestToastEvent(dispatchEventSpy.mock.calls);
+    expect(event?.detail).toEqual({
+        message: "Registration successful!",
+        type: "success",
+    });
+});
     });
 
     it("shows error toast when registration fails", async () => {
+        const email = "sowmya@test.com";
+
         vi.mocked(authService.registerUser).mockRejectedValue(
             new Error("Email already exists")
         );
@@ -288,8 +343,10 @@ describe("Register Component", () => {
         });
 
         fireEvent.change(screen.getByPlaceholderText("Email Address"), {
-            target: { value: "sowmya@test.com" },
+            target: { value: email },
         });
+
+        await completeEmailVerification(email);
 
         fireEvent.change(screen.getByPlaceholderText("Password"), {
             target: { value: "123456" },
@@ -304,8 +361,12 @@ describe("Register Component", () => {
         );
 
         await waitFor(() => {
-            expect(dispatchEventSpy).toHaveBeenCalled();
-        });
+    const event = getLatestToastEvent(dispatchEventSpy.mock.calls);
+    expect(event?.detail).toEqual({
+        message: "Email already exists",
+        type: "error",
+    });
+});
     });
 
     it("resets form when isLogin is true", () => {
@@ -321,9 +382,8 @@ describe("Register Component", () => {
         ).toBeInTheDocument();
     });
 
-
     it("switches to login after successful registration", async () => {
-        vi.useFakeTimers();
+        const email = "sowmya@test.com";
 
         vi.mocked(authService.registerUser).mockResolvedValue({
             message: "Registration successful!",
@@ -348,8 +408,12 @@ describe("Register Component", () => {
         });
 
         fireEvent.change(screen.getByPlaceholderText("Email Address"), {
-            target: { value: "sowmya@test.com" },
+            target: { value: email },
         });
+
+        // Complete OTP verification BEFORE enabling fake timers,
+        // so real-time-based `waitFor` polling isn't blocked.
+        await completeEmailVerification(email);
 
         fireEvent.change(screen.getByPlaceholderText("Password"), {
             target: { value: "123456" },
@@ -358,6 +422,10 @@ describe("Register Component", () => {
         fireEvent.change(screen.getByPlaceholderText("Confirm Password"), {
             target: { value: "123456" },
         });
+
+        // `shouldAdvanceTime: true` lets real-time-based async utilities
+        // keep working, while still allowing manual time advancement below.
+        vi.useFakeTimers({ shouldAdvanceTime: true });
 
         await act(async () => {
             fireEvent.click(
@@ -374,8 +442,6 @@ describe("Register Component", () => {
         });
 
         expect(setIsLogin).toHaveBeenCalledWith(true);
-
-        vi.useRealTimers();
     });
 
     it("shows invalid first name validation", async () => {
@@ -457,9 +523,11 @@ describe("Register Component", () => {
 
         expect(password.type).toBe("password");
 
-        const buttons = screen.getAllByRole("button");
+        const toggleButton = screen.getByLabelText(
+            "toggle password visibility"
+        );
 
-        fireEvent.click(buttons[0]);
+        fireEvent.click(toggleButton);
 
         expect(password.type).toBe("text");
     });
@@ -473,17 +541,207 @@ describe("Register Component", () => {
 
         expect(confirmPassword.type).toBe("password");
 
-        // 👇 Add these lines here
-        const buttons = screen.getAllByRole("button");
+        const toggleButton = screen.getByLabelText(
+            "toggle confirm password visibility"
+        );
 
-        console.log(buttons.length);
-
-        buttons.forEach((button, index) => {
-            console.log(index, button.outerHTML);
-        });
-
-        fireEvent.click(buttons[1]);
+        fireEvent.click(toggleButton);
 
         expect(confirmPassword.type).toBe("text");
+    });
+   it("blocks submission and shows an error toast if email isn't verified", async () => {
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("First Name"), {
+            target: { value: "Sowmya" },
+        });
+        fireEvent.change(screen.getByPlaceholderText("Last Name"), {
+            target: { value: "Chilpa" },
+        });
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "sowmya@test.com" },
+        });
+        fireEvent.change(screen.getByPlaceholderText("Password"), {
+            target: { value: "123456" },
+        });
+        fireEvent.change(screen.getByPlaceholderText("Confirm Password"), {
+            target: { value: "123456" },
+        });
+
+        fireEvent.click(
+            screen.getByRole("button", { name: /create account/i })
+        );
+
+        await waitFor(() => {
+            expect(
+                getLatestToastEvent(dispatchEventSpy.mock.calls)
+            ).toBeDefined();
+        });
+
+        const event = getLatestToastEvent(dispatchEventSpy.mock.calls);
+        expect(event?.detail.type).toBe("error");
+        expect(authService.registerUser).not.toHaveBeenCalled();
+    });
+
+    it("shows an error toast and does not call sendOtp for an invalid email", async () => {
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "not-an-email" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+        await waitFor(() => {
+            expect(
+                getLatestToastEvent(dispatchEventSpy.mock.calls)
+            ).toBeDefined();
+        });
+
+        const event = getLatestToastEvent(dispatchEventSpy.mock.calls);
+        expect(event?.detail.type).toBe("error");
+        expect(authService.sendOtp).not.toHaveBeenCalled();
+    });
+
+    it("shows an error toast when OTP field is empty on verify", async () => {
+        vi.mocked(authService.sendOtp).mockResolvedValue({
+            message: "OTP sent",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "sowmya@test.com" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+        // wait for modal to open
+        await screen.findByPlaceholderText("Enter OTP");
+
+        // reset spy so we only capture the "empty OTP" toast, not the "OTP sent" one
+        dispatchEventSpy.mockClear();
+
+        fireEvent.click(screen.getByRole("button", { name: /verify otp/i }));
+
+        await waitFor(() => {
+            expect(
+                getLatestToastEvent(dispatchEventSpy.mock.calls)
+            ).toBeDefined();
+        });
+
+        const event = getLatestToastEvent(dispatchEventSpy.mock.calls);
+        expect(event?.detail.type).toBe("error");
+        expect(authService.verifyOtp).not.toHaveBeenCalled();
+    });
+
+    it("shows an error toast when sendOtp fails", async () => {
+        vi.mocked(authService.sendOtp).mockRejectedValue(
+            new Error("Unable to send OTP")
+        );
+
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "sowmya@test.com" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+        await waitFor(() => {
+            const event = getLatestToastEvent(dispatchEventSpy.mock.calls);
+            expect(event?.detail).toEqual({
+                message: "Unable to send OTP",
+                type: "error",
+            });
+        });
+
+        // modal should never open since sendOtp failed
+        expect(screen.queryByPlaceholderText("Enter OTP")).not.toBeInTheDocument();
+    });
+
+    it("shows an error toast when verifyOtp fails", async () => {
+        vi.mocked(authService.sendOtp).mockResolvedValue({
+            message: "OTP sent",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+
+        vi.mocked(authService.verifyOtp).mockRejectedValue(
+            new Error("Invalid OTP")
+        );
+
+        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "sowmya@test.com" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+        const otpInput = await screen.findByPlaceholderText("Enter OTP");
+
+        fireEvent.change(otpInput, { target: { value: "999999" } });
+
+        dispatchEventSpy.mockClear();
+
+        fireEvent.click(screen.getByRole("button", { name: /verify otp/i }));
+
+        await waitFor(() => {
+            const event = getLatestToastEvent(dispatchEventSpy.mock.calls);
+            expect(event?.detail).toEqual({
+                message: "Invalid OTP",
+                type: "error",
+            });
+        });
+
+        // modal should stay open since verification failed
+        expect(screen.getByPlaceholderText("Enter OTP")).toBeInTheDocument();
+    });
+
+    it("closes the OTP modal and clears the OTP field when Cancel is clicked", async () => {
+        vi.mocked(authService.sendOtp).mockResolvedValue({
+            message: "OTP sent",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+
+        renderRegister();
+
+        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+            target: { value: "sowmya@test.com" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+        const otpInput = await screen.findByPlaceholderText("Enter OTP");
+
+        fireEvent.change(otpInput, { target: { value: "123456" } });
+
+        fireEvent.click(screen.getByText("Cancel"));
+
+        await waitFor(() => {
+            expect(
+                screen.queryByPlaceholderText("Enter OTP")
+            ).not.toBeInTheDocument();
+        });
+
+        // Reopening should start with a blank OTP field, confirming state was cleared
+        fireEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+        const reopenedOtpInput = await screen.findByPlaceholderText(
+            "Enter OTP"
+        );
+
+        expect(reopenedOtpInput).toHaveValue("");
     });
 });

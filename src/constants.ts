@@ -17,6 +17,7 @@ export const PLACEHOLDERS = {
   EMAIL: "Email Address",
   PASSWORD: "Password",
   CONFIRM_PASSWORD: "Confirm Password",
+    OTP: "Enter OTP",
 };
 
 export const REGISTER_TEXT = {
@@ -26,6 +27,20 @@ export const REGISTER_TEXT = {
   LOGIN_PROMPT: "Already have an account?",
   LOGIN_LINK: "Login",
   GENERIC_ERROR: "Something went wrong",
+   VERIFY_LINK: "Verify",
+  SENDING_OTP: "Sending...",
+  VERIFIED_LABEL: "Verified ✓",
+  OTP_MODAL_TITLE: "Verify your Email",
+  OTP_SENT_PREFIX: "An OTP has been sent to",
+  VERIFY_OTP_BUTTON: "Verify OTP",
+  CANCEL_BUTTON: "Cancel",
+  OTP_SENT_SUCCESS: "OTP sent to",
+  OTP_INVALID_EMAIL: "Please enter a valid email first",
+  OTP_SEND_FAILED: "Failed to send OTP",
+  OTP_EMPTY: "Please enter the OTP",
+  OTP_VERIFY_SUCCESS: "Email verified successfully",
+  OTP_VERIFY_FAILED: "Invalid OTP",
+  EMAIL_NOT_VERIFIED: "Please verify your email before creating an account",
 };
 
 export const LOGIN_CONSTANTS = {
