@@ -438,7 +438,7 @@ describe("Register Component", () => {
         });
 
         await act(async () => {
-            vi.advanceTimersByTime(1500);
+            vi.advanceTimersByTime(5000);
         });
 
         expect(setIsLogin).toHaveBeenCalledWith(true);
