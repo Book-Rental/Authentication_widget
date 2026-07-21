@@ -54,10 +54,10 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
     });
 
     const onSubmit = (data: RegisterFormData) => {
-          if (!isEmailVerified) {
-        showToast(REGISTER_TEXT.EMAIL_NOT_VERIFIED, "error");
-        return; // never calls the API
-    }
+        if (!isEmailVerified) {
+            showToast(REGISTER_TEXT.EMAIL_NOT_VERIFIED, "error");
+            return; // never calls the API
+        }
         const payload: RegisterPayload = {
             firstName: data.firstName,
             lastName: data.lastName,
@@ -84,7 +84,9 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
             await sendOtp({ email, name });
             showToast(`${REGISTER_TEXT.OTP_SENT_SUCCESS} ${email}`, "success");
             setShowOtpModal(true);
-        } catch (error: any) {
+        }
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        catch (error: any) {
             showToast(error.message || REGISTER_TEXT.OTP_SEND_FAILED, "error");
         } finally {
             setIsSendingOtp(false);
@@ -106,7 +108,9 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
             showToast(REGISTER_TEXT.OTP_VERIFY_SUCCESS, "success");
             setShowOtpModal(false);
             setOtp("");
-        } catch (error: any) {
+        }
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        catch (error: any) {
             showToast(error.message || REGISTER_TEXT.OTP_VERIFY_FAILED, "error");
         } finally {
             setIsVerifyingOtp(false);
@@ -235,6 +239,7 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label="toggle password visibility"
                         className="absolute right-3 top-[55%] -translate-y-1/2 text-gray-500"
                     >
                         <Rb_Icon
@@ -268,6 +273,7 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                     <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        aria-label="toggle confirm password visibility"
                         className="absolute right-3 top-[55%] -translate-y-1/2 text-gray-500"
                     >
                         <Rb_Icon

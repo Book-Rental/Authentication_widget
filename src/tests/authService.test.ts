@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import axios from "axios";
-import { loginUser, registerUser } from "../services/authService";
+import {
+    loginUser,
+    registerUser,
+    sendOtp,
+    verifyOtp,
+} from "../services/authService";
 
 vi.mock("axios");
 
@@ -132,6 +137,150 @@ describe("authService", () => {
                     password: "123456",
                 })
             ).rejects.toThrow("Login failed");
+        });
+    });
+
+    describe("sendOtp", () => {
+        it("sends OTP successfully", async () => {
+            const mockResponse = {
+                message: "OTP sent successfully",
+            };
+
+            vi.stubGlobal(
+                "fetch",
+                vi.fn().mockResolvedValue({
+                    ok: true,
+                    json: vi.fn().mockResolvedValue(mockResponse),
+                })
+            );
+
+            const payload = {
+                email: "sowmya@test.com",
+                name: "Sowmya Chilpa",
+            };
+
+            const result = await sendOtp(payload);
+
+            expect(result).toEqual(mockResponse);
+
+            expect(fetch).toHaveBeenCalledWith(
+                "https://be-book-rental.onrender.com/api/auth/send-otp",
+                expect.objectContaining({
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
+                })
+            );
+        });
+
+        it("throws error when send-otp fails", async () => {
+            vi.stubGlobal(
+                "fetch",
+                vi.fn().mockResolvedValue({
+                    ok: false,
+                    json: vi.fn().mockResolvedValue({
+                        message: "Email is already registered",
+                    }),
+                })
+            );
+
+            await expect(
+                sendOtp({
+                    email: "sowmya@test.com",
+                    name: "Sowmya Chilpa",
+                })
+            ).rejects.toThrow("Email is already registered");
+        });
+
+        it("throws default error when message is missing", async () => {
+            vi.stubGlobal(
+                "fetch",
+                vi.fn().mockResolvedValue({
+                    ok: false,
+                    json: vi.fn().mockResolvedValue({}),
+                })
+            );
+
+            await expect(
+                sendOtp({
+                    email: "sowmya@test.com",
+                    name: "Sowmya Chilpa",
+                })
+            ).rejects.toThrow("Failed to send OTP");
+        });
+    });
+
+    describe("verifyOtp", () => {
+        it("verifies OTP successfully", async () => {
+            const mockResponse = {
+                message: "Email verified successfully",
+            };
+
+            vi.stubGlobal(
+                "fetch",
+                vi.fn().mockResolvedValue({
+                    ok: true,
+                    json: vi.fn().mockResolvedValue(mockResponse),
+                })
+            );
+
+            const payload = {
+                email: "sowmya@test.com",
+                otp: "123456",
+            };
+
+            const result = await verifyOtp(payload);
+
+            expect(result).toEqual(mockResponse);
+
+            expect(fetch).toHaveBeenCalledWith(
+                "https://be-book-rental.onrender.com/api/auth/verify-otp",
+                expect.objectContaining({
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
+                })
+            );
+        });
+
+        it("throws error when OTP is invalid", async () => {
+            vi.stubGlobal(
+                "fetch",
+                vi.fn().mockResolvedValue({
+                    ok: false,
+                    json: vi.fn().mockResolvedValue({
+                        message: "Invalid or expired OTP",
+                    }),
+                })
+            );
+
+            await expect(
+                verifyOtp({
+                    email: "sowmya@test.com",
+                    otp: "000000",
+                })
+            ).rejects.toThrow("Invalid or expired OTP");
+        });
+
+        it("throws default error when message is missing", async () => {
+            vi.stubGlobal(
+                "fetch",
+                vi.fn().mockResolvedValue({
+                    ok: false,
+                    json: vi.fn().mockResolvedValue({}),
+                })
+            );
+
+            await expect(
+                verifyOtp({
+                    email: "sowmya@test.com",
+                    otp: "000000",
+                })
+            ).rejects.toThrow("Invalid OTP");
         });
     });
 });
