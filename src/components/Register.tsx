@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { registerUser } from "../services/authService";
+import { createPortal } from "react-dom";
+import { registerUser, sendOtp, verifyOtp } from "../services/authService";
 import { RegisterFormData, RegisterPayload } from "../types/auth";
 import { VALIDATION_MESSAGES, PLACEHOLDERS, REGISTER_TEXT } from "../constants";
 import { showToast } from "../utils/showToast";
@@ -24,6 +25,12 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
     } = useForm<RegisterFormData>();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otp, setOtp] = useState("");
+    const [isEmailVerified, setIsEmailVerified] = useState(false);
+    const [isSendingOtp, setIsSendingOtp] = useState(false);
+    const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+
     useEffect(() => {
         if (isLogin) {
             reset();
@@ -34,7 +41,7 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
         mutationFn: registerUser,
 
         onSuccess: (response) => {
-           showToast(response.message, "success");
+            showToast(response.message, "success");
             reset();
 
             setTimeout(() => {
@@ -42,11 +49,15 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
             }, 1500);
         },
         onError: (error: Error) => {
-           showToast(error.message || REGISTER_TEXT.GENERIC_ERROR, "error");
+            showToast(error.message || REGISTER_TEXT.GENERIC_ERROR, "error");
         },
     });
 
     const onSubmit = (data: RegisterFormData) => {
+          if (!isEmailVerified) {
+        showToast(REGISTER_TEXT.EMAIL_NOT_VERIFIED, "error");
+        return; // never calls the API
+    }
         const payload: RegisterPayload = {
             firstName: data.firstName,
             lastName: data.lastName,
@@ -55,6 +66,51 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
         };
 
         registerMutation.mutate(payload);
+    };
+
+    const handleSendOtp = async () => {
+        const email = watch("email");
+        const firstName = watch("firstName");
+        const lastName = watch("lastName");
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showToast(REGISTER_TEXT.OTP_INVALID_EMAIL, "error");
+            return;
+        }
+
+        try {
+            setIsSendingOtp(true);
+            const name = `${firstName || ""} ${lastName || ""}`.trim();
+            await sendOtp({ email, name });
+            showToast(`${REGISTER_TEXT.OTP_SENT_SUCCESS} ${email}`, "success");
+            setShowOtpModal(true);
+        } catch (error: any) {
+            showToast(error.message || REGISTER_TEXT.OTP_SEND_FAILED, "error");
+        } finally {
+            setIsSendingOtp(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        const email = watch("email");
+
+        if (!otp) {
+            showToast(REGISTER_TEXT.OTP_EMPTY, "error");
+            return;
+        }
+
+        try {
+            setIsVerifyingOtp(true);
+            await verifyOtp({ email, otp });
+            setIsEmailVerified(true);
+            showToast(REGISTER_TEXT.OTP_VERIFY_SUCCESS, "success");
+            setShowOtpModal(false);
+            setOtp("");
+        } catch (error: any) {
+            showToast(error.message || REGISTER_TEXT.OTP_VERIFY_FAILED, "error");
+        } finally {
+            setIsVerifyingOtp(false);
+        }
     };
 
     return (
@@ -120,21 +176,38 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                     <Rb_Label htmlFor="email" required className="text-sm">
                         Email
                     </Rb_Label>
-                    <Rb_Input
-                        id="email"
-                        type="email"
-                        placeholder={PLACEHOLDERS.EMAIL}
-                        error={!!errors.email}
-                        {...register("email", {
-                            required: VALIDATION_MESSAGES.EMAIL_REQUIRED,
-                            pattern: {
-                                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                                message: VALIDATION_MESSAGES.EMAIL_INVALID,
-                            },
-                        })}
-                        className="rounded-lg !mt-1 !mb-0"
-                        borderClass='border !border-gray-500'
-                    />
+                    <div className="flex items-center gap-2 mt-1">
+                        <Rb_Input
+                            id="email"
+                            type="email"
+                            placeholder={PLACEHOLDERS.EMAIL}
+                            error={!!errors.email}
+                            disabled={isEmailVerified}
+                            {...register("email", {
+                                required: VALIDATION_MESSAGES.EMAIL_REQUIRED,
+                                pattern: {
+                                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                    message: VALIDATION_MESSAGES.EMAIL_INVALID,
+                                },
+                            })}
+                            className="rounded-lg !mt-0 !mb-0"
+                            borderClass='border !border-gray-500'
+                        />
+                        {isEmailVerified ? (
+                            <span className="text-green-600 text-sm font-semibold whitespace-nowrap">
+                                {REGISTER_TEXT.VERIFIED_LABEL}
+                            </span>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleSendOtp}
+                                disabled={isSendingOtp}
+                                className="text-blue-600 text-sm font-semibold underline whitespace-nowrap hover:text-blue-700 disabled:opacity-50"
+                            >
+                                {isSendingOtp ? REGISTER_TEXT.SENDING_OTP : REGISTER_TEXT.VERIFY_LINK}
+                            </button>
+                        )}
+                    </div>
                     <Rb_Text variant="p" className="text-red-500 text-xs leading-tight h-4 mt-0.5">
                         {errors.email?.message || ""}
                     </Rb_Text>
@@ -198,7 +271,7 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                         className="absolute right-3 top-[55%] -translate-y-1/2 text-gray-500"
                     >
                         <Rb_Icon
-                            icon={showConfirmPassword  ? FaEyeSlash : FaEye}
+                            icon={showConfirmPassword ? FaEyeSlash : FaEye}
                             size={15} color="#3b82f6"
                         />
                     </button>
@@ -228,6 +301,50 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                     {REGISTER_TEXT.LOGIN_LINK}
                 </Rb_Text>
             </div>
+
+            {showOtpModal && createPortal(
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999] px-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+                        <Rb_Text variant="h3" className="text-blue-700 font-semibold">
+                            {REGISTER_TEXT.OTP_MODAL_TITLE}
+                        </Rb_Text>
+                        <Rb_Text variant="p" className="text-gray-500 text-sm mt-1 mb-4">
+                            {REGISTER_TEXT.OTP_SENT_PREFIX}{" "}
+                            <span className="font-medium text-gray-700">{watch("email")}</span>.
+                        </Rb_Text>
+
+                        <Rb_Input
+                            type="text"
+                            placeholder={PLACEHOLDERS.OTP}
+                            value={otp}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtp(e.target.value)}
+                            className="rounded-lg !mt-0 !mb-0 w-full"
+                            borderClass="border !border-gray-300"
+                        />
+
+                        <Rb_Button
+                            type="button"
+                            onClick={handleVerifyOtp}
+                            isLoading={isVerifyingOtp}
+                            className="w-full mt-4 !bg-blue-600 hover:!bg-blue-700 !text-white"
+                        >
+                            {REGISTER_TEXT.VERIFY_OTP_BUTTON}
+                        </Rb_Button>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowOtpModal(false);
+                                setOtp("");
+                            }}
+                            className="text-gray-500 text-sm mt-3 underline block text-center w-full hover:text-gray-700"
+                        >
+                            {REGISTER_TEXT.CANCEL_BUTTON}
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

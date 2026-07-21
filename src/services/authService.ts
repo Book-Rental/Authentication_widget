@@ -39,3 +39,50 @@ export const loginUser = async (payload: LoginFormData) => {
 
   return response.data;
 };
+
+
+export interface SendOtpPayload {
+  email: string;
+  name: string;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  otp: string;
+}
+
+export const sendOtp = async (payload: SendOtpPayload) => {
+  const response = await fetch(`${BASE_URL}/auth/send-otp`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to send OTP");
+  }
+
+  return data;
+};
+
+export const verifyOtp = async (payload: VerifyOtpPayload) => {
+  const response = await fetch(`${BASE_URL}/auth/verify-otp`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Invalid OTP");
+  }
+
+  return data;
+};
