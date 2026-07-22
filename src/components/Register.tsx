@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
@@ -7,8 +7,9 @@ import { RegisterFormData, RegisterPayload } from "../types/auth";
 import { VALIDATION_MESSAGES, PLACEHOLDERS, REGISTER_TEXT } from "../constants";
 import { showToast } from "../utils/showToast";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { useState } from "react";
 import { Rb_Text, Rb_Label, Rb_Input, Rb_Icon, Rb_Button } from "@rentbook/rentbook-ui-lib";
+
+const OTP_LENGTH = 6;
 
 interface RegisterProps {
     isLogin: boolean;
@@ -23,48 +24,53 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
         reset,
         formState: { errors },
     } = useForm<RegisterFormData>();
+
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
     const [showOtpModal, setShowOtpModal] = useState(false);
-    const [otp, setOtp] = useState("");
-    const [isEmailVerified, setIsEmailVerified] = useState(false);
+    const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+    const [otpError, setOtpError] = useState("");
     const [isSendingOtp, setIsSendingOtp] = useState(false);
     const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+    const [pendingPayload, setPendingPayload] = useState<RegisterPayload | null>(null);
+
+    const otpInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+    const resetOtpBoxes = () => {
+        setOtpDigits(Array(OTP_LENGTH).fill(""));
+        setOtpError("");
+    };
 
     useEffect(() => {
         if (isLogin) {
             reset();
-            setIsEmailVerified(false);
-        setShowOtpModal(false);
-        setOtp("");
-        setIsSendingOtp(false);
-        setIsVerifyingOtp(false);
+            setShowOtpModal(false);
+            resetOtpBoxes();
+            setIsSendingOtp(false);
+            setIsVerifyingOtp(false);
+            setPendingPayload(null);
         }
     }, [isLogin, reset]);
 
     const registerMutation = useMutation({
         mutationFn: registerUser,
-
         onSuccess: (response) => {
             showToast(response.message, "success");
             reset();
- setIsEmailVerified(false);
-    setShowOtpModal(false);
-    setOtp("");
+            setShowOtpModal(false);
+            resetOtpBoxes();
+            setPendingPayload(null);
             setTimeout(() => {
                 setIsLogin(true);
-            }, 5000);
+            }, 1000);
         },
         onError: (error: Error) => {
             showToast(error.message || REGISTER_TEXT.GENERIC_ERROR, "error");
         },
     });
 
-    const onSubmit = (data: RegisterFormData) => {
-        if (!isEmailVerified) {
-            showToast(REGISTER_TEXT.EMAIL_NOT_VERIFIED, "error");
-            return; // never calls the API
-        }
+    const onSubmit = async (data: RegisterFormData) => {
         const payload: RegisterPayload = {
             firstName: data.firstName,
             lastName: data.lastName,
@@ -72,27 +78,17 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
             password: data.password,
         };
 
-        registerMutation.mutate(payload);
-    };
-
-    const handleSendOtp = async () => {
-        const email = watch("email");
-        const firstName = watch("firstName");
-        const lastName = watch("lastName");
-
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            showToast(REGISTER_TEXT.OTP_INVALID_EMAIL, "error");
-            return;
-        }
-
         try {
             setIsSendingOtp(true);
-            const name = `${firstName || ""} ${lastName || ""}`.trim();
-            await sendOtp({ email, name });
-            showToast(`${REGISTER_TEXT.OTP_SENT_SUCCESS} ${email}`, "success");
+            const name = `${data.firstName || ""} ${data.lastName || ""}`.trim();
+            await sendOtp({ email: data.email, name });
+
+            setPendingPayload(payload);
+            resetOtpBoxes();
+            showToast(`${REGISTER_TEXT.OTP_SENT_SUCCESS} ${data.email}`, "success");
             setShowOtpModal(true);
         }
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         catch (error: any) {
             showToast(error.message || REGISTER_TEXT.OTP_SEND_FAILED, "error");
         } finally {
@@ -100,27 +96,94 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
         }
     };
 
-    const handleVerifyOtp = async () => {
-        const email = watch("email");
+    const handleOtpChange = (index: number, rawValue: string) => {
+        const value = rawValue.replace(/\D/g, "");
+        if (!value) {
+            const next = [...otpDigits];
+            next[index] = "";
+            setOtpDigits(next);
+            return;
+        }
 
-        if (!otp) {
-            showToast(REGISTER_TEXT.OTP_EMPTY, "error");
+        const next = [...otpDigits];
+        next[index] = value[value.length - 1];
+        setOtpDigits(next);
+        setOtpError("");
+
+        if (index < OTP_LENGTH - 1) {
+            otpInputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+            otpInputRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+        if (!pasted) return;
+        e.preventDefault();
+
+        const next = Array(OTP_LENGTH).fill("");
+        pasted.split("").forEach((digit, i) => {
+            next[i] = digit;
+        });
+        setOtpDigits(next);
+        setOtpError("");
+
+        const focusIndex = Math.min(pasted.length, OTP_LENGTH - 1);
+        otpInputRefs.current[focusIndex]?.focus();
+    };
+
+    const handleVerifyOtp = async () => {
+        const otp = otpDigits.join("");
+
+        if (otp.length < OTP_LENGTH) {
+            setOtpError(REGISTER_TEXT.OTP_EMPTY);
+            return;
+        }
+            /* v8 ignore next 4 -- defensive guard: pendingPayload is always set
+       before the OTP modal (and therefore this button) can render */
+        if (!pendingPayload) {
+            showToast(REGISTER_TEXT.GENERIC_ERROR, "error");
             return;
         }
 
         try {
             setIsVerifyingOtp(true);
-            await verifyOtp({ email, otp });
-            setIsEmailVerified(true);
+            setOtpError("");
+            await verifyOtp({ email: pendingPayload.email, otp });
             showToast(REGISTER_TEXT.OTP_VERIFY_SUCCESS, "success");
-            setShowOtpModal(false);
-            setOtp("");
+            registerMutation.mutate(pendingPayload);
         }
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         catch (error: any) {
-            showToast(error.message || REGISTER_TEXT.OTP_VERIFY_FAILED, "error");
+            const message = error.message || REGISTER_TEXT.OTP_VERIFY_FAILED;
+            setOtpError(message);
+            setOtpDigits(Array(OTP_LENGTH).fill(""));
+            otpInputRefs.current[0]?.focus();
         } finally {
             setIsVerifyingOtp(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (!pendingPayload) return;
+        try {
+            setIsSendingOtp(true);
+            const name = `${pendingPayload.firstName || ""} ${pendingPayload.lastName || ""}`.trim();
+            await sendOtp({ email: pendingPayload.email, name });
+            resetOtpBoxes();
+            otpInputRefs.current[0]?.focus();
+            showToast(`${REGISTER_TEXT.OTP_SENT_SUCCESS} ${pendingPayload.email}`, "success");
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        catch (error: any) {
+            showToast(error.message || REGISTER_TEXT.OTP_SEND_FAILED, "error");
+        } finally {
+            setIsSendingOtp(false);
         }
     };
 
@@ -132,7 +195,8 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                 </Rb_Text>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)}>
+       
+                <form onSubmit={handleSubmit(onSubmit)} noValidate>
                 <div className="grid grid-cols-2 gap-3">
                     <div>
                         <Rb_Label htmlFor="firstName" required className="text-sm">
@@ -187,38 +251,21 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                     <Rb_Label htmlFor="email" required className="text-sm">
                         Email
                     </Rb_Label>
-                    <div className="flex items-center gap-2 mt-1">
-                        <Rb_Input
-                            id="email"
-                            type="email"
-                            placeholder={PLACEHOLDERS.EMAIL}
-                            error={!!errors.email}
-                            disabled={isEmailVerified}
-                            {...register("email", {
-                                required: VALIDATION_MESSAGES.EMAIL_REQUIRED,
-                                pattern: {
-                                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                                    message: VALIDATION_MESSAGES.EMAIL_INVALID,
-                                },
-                            })}
-                            className="rounded-lg !mt-0 !mb-0"
-                            borderClass='border !border-gray-500'
-                        />
-                        {isEmailVerified ? (
-                            <span className="text-green-600 text-sm font-semibold whitespace-nowrap">
-                                {REGISTER_TEXT.VERIFIED_LABEL}
-                            </span>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={handleSendOtp}
-                                disabled={isSendingOtp}
-                                className="text-blue-600 text-sm font-semibold underline whitespace-nowrap hover:text-blue-700 disabled:opacity-50"
-                            >
-                                {isSendingOtp ? REGISTER_TEXT.SENDING_OTP : REGISTER_TEXT.VERIFY_LINK}
-                            </button>
-                        )}
-                    </div>
+                    <Rb_Input
+                        id="email"
+                        type="email"
+                        placeholder={PLACEHOLDERS.EMAIL}
+                        error={!!errors.email}
+                        {...register("email", {
+                            required: VALIDATION_MESSAGES.EMAIL_REQUIRED,
+                            pattern: {
+                                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                message: VALIDATION_MESSAGES.EMAIL_INVALID,
+                            },
+                        })}
+                        className="rounded-lg !mt-1 !mb-0"
+                        borderClass='border !border-gray-500'
+                    />
                     <Rb_Text variant="p" className="text-red-500 text-xs leading-tight h-4 mt-0.5">
                         {errors.email?.message || ""}
                     </Rb_Text>
@@ -296,9 +343,9 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                 <Rb_Button
                     type="submit"
                     className="w-full mt-1"
-                    isLoading={registerMutation.isPending}
+                    isLoading={isSendingOtp}
                 >
-                    {REGISTER_TEXT.SUBMIT_BUTTON}
+                    {isSendingOtp ? REGISTER_TEXT.SENDING_OTP : REGISTER_TEXT.SUBMIT_BUTTON}
                 </Rb_Button>
             </form>
 
@@ -323,34 +370,58 @@ const Register = ({ isLogin, setIsLogin }: RegisterProps) => {
                         </Rb_Text>
                         <Rb_Text variant="p" className="text-gray-500 text-sm mt-1 mb-4">
                             {REGISTER_TEXT.OTP_SENT_PREFIX}{" "}
-                            <span className="font-medium text-gray-700">{watch("email")}</span>.
+                            <span className="font-medium text-gray-700">{pendingPayload?.email}</span>.
                         </Rb_Text>
 
-                        <Rb_Input
-                            type="text"
-                            placeholder={PLACEHOLDERS.OTP}
-                            value={otp}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtp(e.target.value)}
-                            className="rounded-lg !mt-0 !mb-0 w-full"
-                            borderClass="border !border-gray-300"
-                        />
+                        <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
+                            {otpDigits.map((digit, index) => (
+                                <input
+                                    key={index}
+                                    ref={(el) => { otpInputRefs.current[index] = el; }}
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={1}
+                                    aria-label={`OTP digit ${index + 1}`}
+                                    value={digit}
+                                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                    className={`w-11 h-12 text-center text-lg font-semibold rounded-lg border outline-none transition-colors
+                                        ${otpError
+                                            ? "border-red-500 focus:border-red-500 text-red-600"
+                                            : "border-gray-300 focus:border-blue-600"}`}
+                                />
+                            ))}
+                        </div>
+
+                        <Rb_Text variant="p" className="text-red-500 text-xs leading-tight h-4 mt-2">
+                            {otpError}
+                        </Rb_Text>
 
                         <Rb_Button
                             type="button"
                             onClick={handleVerifyOtp}
-                            isLoading={isVerifyingOtp}
-                            className="w-full mt-4 !bg-blue-600 hover:!bg-blue-700 !text-white"
+                            isLoading={isVerifyingOtp || registerMutation.isPending}
+                            className="w-full mt-2 !bg-blue-600 hover:!bg-blue-700 !text-white"
                         >
                             {REGISTER_TEXT.VERIFY_OTP_BUTTON}
                         </Rb_Button>
 
                         <button
                             type="button"
+                            onClick={handleResendOtp}
+                            disabled={isSendingOtp}
+                            className="text-blue-600 text-sm mt-3 underline block text-center w-full hover:text-blue-700 disabled:opacity-50"
+                        >
+                            {isSendingOtp ? REGISTER_TEXT.SENDING_OTP : REGISTER_TEXT.RESEND_OTP}
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() => {
                                 setShowOtpModal(false);
-                                setOtp("");
+                                resetOtpBoxes();
                             }}
-                            className="text-gray-500 text-sm mt-3 underline block text-center w-full hover:text-gray-700"
+                            className="text-gray-500 text-sm mt-2 underline block text-center w-full hover:text-gray-700"
                         >
                             {REGISTER_TEXT.CANCEL_BUTTON}
                         </button>

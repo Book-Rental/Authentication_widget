@@ -152,52 +152,62 @@ describe("Login Component", () => {
         ).toBeEnabled();
     });
 
-    it("logs in successfully", async () => {
-        vi.mocked(authService.loginUser).mockResolvedValue({
-            data: {
-                token: "dummy-token",
-                userInfo: {
-                    id: 1,
-                    name: "Sowmya",
-                },
+   it("logs in successfully", async () => {
+    vi.mocked(authService.loginUser).mockResolvedValue({
+        data: {
+            token: "dummy-token",
+            userInfo: {
+                id: 1,
+                name: "Sowmya",
             },
-            message: "Login successful!",
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any);
+        },
+        message: "Login successful!",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
-        const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
-        const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
 
-        renderLogin();
+    renderLogin();
 
-        fireEvent.change(screen.getByPlaceholderText("Email Address"), {
-            target: { value: "test@test.com" },
-        });
-
-        fireEvent.change(screen.getByPlaceholderText("Password"), {
-            target: { value: "123456" },
-        });
-
-        fireEvent.click(screen.getByRole("button", { name: /login/i }));
-
-        await waitFor(() => {
-            expect(authService.loginUser).toHaveBeenCalled();
-        });
-
-        expect(setItemSpy).toHaveBeenCalled();
-
-        await waitFor(() => {
-            expect(dispatchEventSpy).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    type: "app-toast-notification",
-                    detail: {
-                        message: "Login successful!",
-                        type: "success",
-                    },
-                })
-            );
-        });
+    fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+        target: { value: "test@test.com" },
     });
+
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+        target: { value: "123456" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /login/i }));
+
+    await waitFor(() => {
+        expect(authService.loginUser).toHaveBeenCalled();
+    });
+
+    // Confirms the widget hands off auth data via the custom event
+    await waitFor(() => {
+        expect(dispatchEventSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: "login-widget-success",
+                detail: {
+                    token: "dummy-token",
+                    userInfo: { id: 1, name: "Sowmya" },
+                },
+            })
+        );
+    });
+
+    await waitFor(() => {
+        expect(dispatchEventSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: "app-toast-notification",
+                detail: {
+                    message: "Login successful!",
+                    type: "success",
+                },
+            })
+        );
+    });
+});
     it("shows error toast when login fails", async () => {
         vi.mocked(authService.loginUser).mockRejectedValue({
             response: {
