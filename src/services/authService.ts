@@ -1,7 +1,7 @@
 import axios from "axios";
 import { LoginFormData, RegisterPayload } from "../types/auth";
 
-const BASE_URL = "https://be-book-rental.onrender.com/api";
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export const registerUser = async (
   userData: RegisterPayload
